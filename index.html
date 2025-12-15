@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Система подбора матчей</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .tab-btn {
+            padding: 12px 25px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            color: #999;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+            margin-bottom: -2px;
+        }
+
+        .tab-btn.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-btn:hover {
+            color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .presets {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+
+        .preset-card {
+            border: 2px solid #eee;
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .preset-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.2);
+        }
+
+        .preset-card h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .preset-card .params {
+            font-size: 0.9em;
+            color: #666;
+            margin: 10px 0;
+            line-height: 1.6;
+        }
+
+        .preset-card button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 15px;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+
+        .setting-group {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+        }
+
+        .setting-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+            font-size: 0.95em;
+        }
+
+        .setting-group .hint {
+            font-size: 0.85em;
+            color: #999;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .slider {
+            width: 100%;
+            height: 6px;
+            border-radius: 5px;
+            background: #ddd;
+            outline: none;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+        }
+
+        .slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+            border: none;
+        }
+
+        .value-display {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 8px;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .formula-box {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 30px;
+            font-size: 0.9em;
+            line-height: 1.6;
+        }
+
+        .formula-box h4 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .formula {
+            font-family: 'Courier New', monospace;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 8px 0;
+            color: #333;
+        }
+
+        .stats-preview {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .stat {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .stat .label {
+            font-size: 0.85em;
+            opacity: 0.9;
+            margin-bottom: 8px;
+        }
+
+        .stat .value {
+            font-size: 2em;
+            font-weight: 700;
+        }
+
+        .stat .unit {
+            font-size: 0.8em;
+            opacity: 0.8;
+            margin-top: 5px;
+        }
+
+        .control-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 40px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 25px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 1em;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #333;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .result-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+        }
+
+        .result-card h4 {
+            font-size: 0.9em;
+            opacity: 0.8;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .result-card .value {
+            font-size: 2.5em;
+            font-weight: 700;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(550px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .chart-wrapper {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            position: relative;
+        }
+
+        .chart-wrapper h3 {
+            margin-bottom: 20px;
+            color: #333;
+            text-align: center;
+            font-size: 1.1em;
+        }
+
+        .chart-wrapper canvas {
+            max-height: 400px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+            margin-top: 20px;
+        }
+
+        table th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #eee;
+            text-align: center;
+        }
+
+        table tr:hover {
+            background: #f8f9fa;
+        }
+
+        table tr.summary {
+            background: #f0f0f0;
+            font-weight: 600;
+        }
+
+        .footer {
+            background: #f8f9fa;
+            padding: 20px 40px;
+            text-align: center;
+            color: #666;
+            font-size: 0.9em;
+            border-top: 1px solid #eee;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+            .settings-grid {
+                grid-template-columns: 1fr;
+            }
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 Система подбора матчей</h1>
+            <p>Интерактивное моделирование с интегрированными графиками</p>
+        </div>
+
+        <div class="content">
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="presets">📋 Пресеты</button>
+                <button class="tab-btn" data-tab="settings">⚙️ Настройки</button>
+                <button class="tab-btn" data-tab="results">📊 Результаты</button>
+            </div>
+
+            <!-- ПРЕСЕТЫ -->
+            <div id="presets" class="tab-content active">
+                <h2 style="margin-bottom: 25px;">Выберите сценарий</h2>
+                <div class="presets">
+                    <div class="preset-card" onclick="loadPreset('low')">
+                        <h3>🟢 Low Load</h3>
+                        <div class="params">
+                            <strong>λ:</strong> 0.5 игр/мин<br>
+                            <strong>Серверов:</strong> 6<br>
+                            <strong>Время:</strong> 120 мин<br>
+                            <strong>Результат:</strong> Минимальная нагрузка
+                        </div>
+                        <button>Загрузить</button>
+                    </div>
+
+                    <div class="preset-card" onclick="loadPreset('balanced')">
+                        <h3>🟡 Balanced</h3>
+                        <div class="params">
+                            <strong>λ:</strong> 1.0 игр/мин<br>
+                            <strong>Серверов:</strong> 9<br>
+                            <strong>Время:</strong> 120 мин<br>
+                            <strong>Результат:</strong> Оптимальная конфигурация
+                        </div>
+                        <button>Загрузить</button>
+                    </div>
+
+                    <div class="preset-card" onclick="loadPreset('high')">
+                        <h3>🔴 High Load</h3>
+                        <div class="params">
+                            <strong>λ:</strong> 2.0 игр/мин<br>
+                            <strong>Серверов:</strong> 12<br>
+                            <strong>Время:</strong> 120 мин<br>
+                            <strong>Результат:</strong> Высокая нагрузка
+                        </div>
+                        <button>Загрузить</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- НАСТРОЙКИ -->
+            <div id="settings" class="tab-content">
+                <h2 style="margin-bottom: 25px;">Расширенные настройки</h2>
+                
+                <div class="settings-grid">
+                    <div class="setting-group">
+                        <label>λ (Интенсивность поступления)</label>
+                        <span class="hint">Игроков в минуту</span>
+                        <input type="range" id="lambda" class="slider" min="0.1" max="5" step="0.1" value="1.0" oninput="updateCalculations()">
+                        <div class="value-display">
+                            <span id="lambda-value">1.0</span>
+                            <span>игр/мин</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-group">
+                        <label>Количество серверов</label>
+                        <span class="hint">Каждый регион (EU, NA, AS)</span>
+                        <input type="range" id="servers" class="slider" min="1" max="20" step="1" value="3" oninput="updateCalculations()">
+                        <div class="value-display">
+                            <span id="servers-value">3</span>
+                            <span>×3 региона = 9 всего</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-group">
+                        <label>Время матча</label>
+                        <span class="hint">Продолжительность одного матча</span>
+                        <input type="range" id="service-time" class="slider" min="5" max="60" step="5" value="20" oninput="updateCalculations()">
+                        <div class="value-display">
+                            <span id="service-value">20</span>
+                            <span>секунд</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-group">
+                        <label>Размер матча</label>
+                        <span class="hint">Игроков на матч</span>
+                        <input type="range" id="match-size" class="slider" min="2" max="50" step="2" value="10" oninput="updateCalculations()">
+                        <div class="value-display">
+                            <span id="match-value">10</span>
+                            <span>игроков</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-group">
+                        <label>Длительность симуляции</label>
+                        <span class="hint">Сколько минут моделировать</span>
+                        <input type="range" id="sim-time" class="slider" min="30" max="300" step="30" value="120" oninput="updateCalculations()">
+                        <div class="value-display">
+                            <span id="sim-value">120</span>
+                            <span>минут</span>
+                        </div>
+                    </div>
+
+                    <div class="setting-group">
+                        <label>Максимум в очереди</label>
+                        <span class="hint">Отказы выше этого числа</span>
+                        <input type="range" id="max-queue" class="slider" min="10" max="1000" step="50" value="100" oninput="updateCalculations()">
+                        <div class="value-display">
+                            <span id="queue-value">100</span>
+                            <span>игроков</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Формулы и расчеты -->
+                <div class="formula-box">
+                    <h4>📐 Теоретические расчёты</h4>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                        <div>
+                            <strong>Загруженность (ρ):</strong><br>
+                            <div class="formula" id="formula-rho">ρ = λ × T / 60 = ?</div>
+                            <div id="rho-status" style="color: #333; margin-top: 5px;"></div>
+                        </div>
+                        <div>
+                            <strong>Пропускная способность:</strong><br>
+                            <div class="formula" id="formula-capacity">Мощность = Серверов × 60 / T = ? игр/мин</div>
+                        </div>
+                        <div>
+                            <strong>Среднее время ожидания:</strong><br>
+                            <div class="formula" id="formula-wait">M[W] = (ρ / (1 - ρ)) × T = ? сек</div>
+                        </div>
+                        <div>
+                            <strong>Прогноз отказов:</strong><br>
+                            <div class="formula" id="formula-rejection">P(отказ) ≈ ρ² = ?%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stats-preview" id="stats-preview"></div>
+
+                <div class="control-buttons">
+                    <button class="btn-primary" onclick="runSimulation()">▶ Запустить моделирование</button>
+                    <button class="btn-secondary" onclick="resetSettings()">↻ Сбросить</button>
+                </div>
+            </div>
+
+            <!-- РЕЗУЛЬТАТЫ -->
+            <div id="results" class="tab-content">
+                <div style="text-align: center; margin: 40px 0;">
+                    <p style="color: #999; font-size: 1.2em;">Запустите моделирование для просмотра результатов</p>
+                </div>
+
+                <div class="result-grid" id="result-grid"></div>
+
+                <div class="charts-grid" id="charts-grid"></div>
+
+                <div id="charts-container"></div>
+
+                <div style="text-align: center; margin-top: 30px;">
+                    <button class="btn-primary" onclick="downloadResults()" style="display:none;" id="download-btn">📥 Скачать CSV</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>© 2024 МГТУ им. Баумана | Курсовая работа по имитационному моделированию</p>
+        </div>
+    </div>
+
+    <script>
+        let currentParams = {};
+        let currentResults = null;
+        let chartInstances = {};
+
+        // Инициализация табов
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const tabName = this.getAttribute('data-tab');
+                switchTab(tabName);
+            });
+        });
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(tabName).classList.add('active');
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+        }
+
+        function updateCalculations() {
+            const lambda = parseFloat(document.getElementById('lambda').value);
+            const servers = parseInt(document.getElementById('servers').value);
+            const serviceTime = parseInt(document.getElementById('service-time').value);
+            const matchSize = parseInt(document.getElementById('match-size').value);
+            const simTime = parseInt(document.getElementById('sim-time').value);
+            const maxQueue = parseInt(document.getElementById('max-queue').value);
+
+            document.getElementById('lambda-value').textContent = lambda.toFixed(1);
+            document.getElementById('servers-value').textContent = servers;
+            document.getElementById('service-value').textContent = serviceTime;
+            document.getElementById('match-value').textContent = matchSize;
+            document.getElementById('sim-value').textContent = simTime;
+            document.getElementById('queue-value').textContent = maxQueue;
+
+            const rho = (lambda * serviceTime) / 60;
+            const capacity = (servers * 3 * 60) / serviceTime;
+            const waitTime = rho >= 1 ? '∞ (нестабильна)' : ((rho / (1 - rho)) * serviceTime).toFixed(2) + ' сек';
+            const rejectionProb = (rho * rho * 100).toFixed(2);
+
+            document.getElementById('formula-rho').innerHTML = `ρ = ${lambda.toFixed(1)} × ${serviceTime} / 60 = <strong>${rho.toFixed(3)}</strong>`;
+            document.getElementById('formula-capacity').innerHTML = `Мощность = ${servers * 3} × 60 / ${serviceTime} = <strong>${capacity.toFixed(1)}</strong> игр/мин`;
+            document.getElementById('formula-wait').innerHTML = `M[W] = (${rho.toFixed(3)} / ${(1 - rho).toFixed(3)}) × ${serviceTime} = <strong>${waitTime}</strong>`;
+            document.getElementById('formula-rejection').innerHTML = `P(отказ) ≈ ${rho.toFixed(3)}² = <strong>${rejectionProb}%</strong>`;
+
+            const status = rho > 0.8 ? '⚠️ Система близка к насыщению' : (rho > 1 ? '❌ Система нестабильна!' : '✅ Система стабильна');
+            document.getElementById('rho-status').innerHTML = status;
+
+            const statsHtml = `
+                <div class="stat">
+                    <div class="label">Всего серверов</div>
+                    <div class="value">${servers * 3}</div>
+                </div>
+                <div class="stat">
+                    <div class="label">Загруженность</div>
+                    <div class="value">${(rho * 100).toFixed(1)}%</div>
+                    <div class="unit">одного сервера</div>
+                </div>
+                <div class="stat">
+                    <div class="label">Пропускная способность</div>
+                    <div class="value">${capacity.toFixed(0)}</div>
+                    <div class="unit">игроков/мин</div>
+                </div>
+                <div class="stat">
+                    <div class="label">Прогноз ожидания</div>
+                    <div class="value">${rho >= 1 ? '∞' : ((rho / (1 - rho)) * serviceTime).toFixed(1)}</div>
+                    <div class="unit">секунд</div>
+                </div>
+            `;
+            document.getElementById('stats-preview').innerHTML = statsHtml;
+
+            currentParams = {
+                lambda_rate: lambda,
+                sim_time: simTime,
+                max_queue: maxQueue,
+                max_wait_time: 60.0,
+                servers_eu: servers,
+                servers_na: servers,
+                servers_as: servers,
+                match_size: matchSize,
+                service_time: serviceTime,
+                mmr_spread_max: 500,
+                runs: 10,
+                scenario_name: 'Custom'
+            };
+        }
+
+        function loadPreset(name) {
+            const presets = {
+                'low': { lambda: 0.5, servers: 2, serviceTime: 20, matchSize: 10, simTime: 120, maxQueue: 50 },
+                'balanced': { lambda: 1.0, servers: 3, serviceTime: 20, matchSize: 10, simTime: 120, maxQueue: 100 },
+                'high': { lambda: 2.0, servers: 4, serviceTime: 20, matchSize: 10, simTime: 120, maxQueue: 150 }
+            };
+
+            const preset = presets[name];
+            document.getElementById('lambda').value = preset.lambda;
+            document.getElementById('servers').value = preset.servers;
+            document.getElementById('service-time').value = preset.serviceTime;
+            document.getElementById('match-size').value = preset.matchSize;
+            document.getElementById('sim-time').value = preset.simTime;
+            document.getElementById('max-queue').value = preset.maxQueue;
+
+            updateCalculations();
+            switchTab('settings');
+        }
+
+        function resetSettings() {
+            document.getElementById('lambda').value = 1.0;
+            document.getElementById('servers').value = 3;
+            document.getElementById('service-time').value = 20;
+            document.getElementById('match-size').value = 10;
+            document.getElementById('sim-time').value = 120;
+            document.getElementById('max-queue').value = 100;
+            updateCalculations();
+        }
+
+        async function runSimulation() {
+            try {
+                const response = await fetch('/api/simulate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(currentParams)
+                });
+
+                if (!response.ok) throw new Error('Ошибка моделирования: HTTP ' + response.status);
+
+                currentResults = await response.json();
+                displayResults();
+                switchTab('results');
+            } catch (error) {
+                alert('❌ Ошибка: ' + error.message);
+            }
+        }
+
+        function displayResults() {
+            const agg = currentResults.aggregates;
+            const exp = currentResults.experiments;
+
+            // Карточки с результатами
+            const resultGrid = `
+                <div class="result-card">
+                    <h4>Среднее ожидание</h4>
+                    <div class="value">${agg.avg_wait_time}с</div>
+                </div>
+                <div class="result-card">
+                    <h4>Вероятность отказа</h4>
+                    <div class="value">${agg.rejection_rate_avg}%</div>
+                </div>
+                <div class="result-card">
+                    <h4>Загруженность</h4>
+                    <div class="value">${agg.avg_server_util}%</div>
+                </div>
+                <div class="result-card">
+                    <h4>Матчей сформировано</h4>
+                    <div class="value">${agg.matches_formed_avg}</div>
+                </div>
+            `;
+            document.getElementById('result-grid').innerHTML = resultGrid;
+
+            // Создаем графики
+            createCharts(exp, agg);
+
+            // Таблица результатов
+            const tableHtml = `
+                <div class="chart-wrapper" style="grid-column: 1 / -1;">
+                    <h3>📋 Детальные результаты</h3>
+                    <table>
+                        <tr>
+                            <th>Прогон</th>
+                            <th>Прибыло</th>
+                            <th>Обслужено</th>
+                            <th>Отказов</th>
+                            <th>% Отказа</th>
+                            <th>Матчей</th>
+                            <th>Ожидание (сек)</th>
+                            <th>Загрузка (%)</th>
+                            <th>MMR Разброс</th>
+                        </tr>
+                        ${exp.map(e => `
+                            <tr>
+                                <td>${e.run}</td>
+                                <td>${e.arrived}</td>
+                                <td>${e.matched}</td>
+                                <td>${e.rejected}</td>
+                                <td>${e.rejection_rate}%</td>
+                                <td>${e.matches_formed}</td>
+                                <td>${e.avg_wait_time}</td>
+                                <td>${e.avg_server_util}%</td>
+                                <td>${e.avg_mmr_diff}</td>
+                            </tr>
+                        `).join('')}
+                        <tr class="summary">
+                            <td>СРЕДНЕЕ</td>
+                            <td>${agg.arrived_avg}</td>
+                            <td>${agg.matched_avg}</td>
+                            <td>${agg.rejected_avg}</td>
+                            <td>${agg.rejection_rate_avg}%</td>
+                            <td>${agg.matches_formed_avg}</td>
+                            <td>${agg.avg_wait_time}</td>
+                            <td>${agg.avg_server_util}%</td>
+                            <td>${agg.avg_mmr_diff}</td>
+                        </tr>
+                    </table>
+                </div>
+            `;
+            
+            document.getElementById('charts-container').innerHTML = tableHtml;
+            document.getElementById('download-btn').style.display = 'inline-block';
+        }
+
+        function createCharts(experiments, aggregates) {
+            const chartsHtml = `
+                <div class="chart-wrapper">
+                    <h3>📈 Загруженность серверов</h3>
+                    <canvas id="chart-utilization"></canvas>
+                </div>
+                <div class="chart-wrapper">
+                    <h3>📊 Вероятность отказов</h3>
+                    <canvas id="chart-rejection"></canvas>
+                </div>
+                <div class="chart-wrapper">
+                    <h3>⏱️ Среднее время ожидания</h3>
+                    <canvas id="chart-wait"></canvas>
+                </div>
+                <div class="chart-wrapper">
+                    <h3>🎯 Загруженность vs Отказы</h3>
+                    <canvas id="chart-scatter"></canvas>
+                </div>
+                <div class="chart-wrapper">
+                    <h3>🎮 Сформировано матчей</h3>
+                    <canvas id="chart-matches"></canvas>
+                </div>
+                <div class="chart-wrapper">
+                    <h3>👥 Прибыло vs Обслужено</h3>
+                    <canvas id="chart-arrived"></canvas>
+                </div>
+            `;
+
+            document.getElementById('charts-grid').innerHTML = chartsHtml;
+
+            // Данные для графиков
+            const runs = experiments.map(e => e.run);
+            const utilization = experiments.map(e => e.avg_server_util);
+            const rejection = experiments.map(e => e.rejection_rate);
+            const waitTime = experiments.map(e => e.avg_wait_time);
+            const matches = experiments.map(e => e.matches_formed);
+            const arrived = experiments.map(e => e.arrived);
+            const served = experiments.map(e => e.matched);
+
+            // График 1: Загруженность
+            if (chartInstances['utilization']) chartInstances['utilization'].destroy();
+            chartInstances['utilization'] = new Chart(document.getElementById('chart-utilization'), {
+                type: 'line',
+                data: {
+                    labels: runs,
+                    datasets: [{
+                        label: 'Загруженность (%)',
+                        data: utilization,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 5,
+                        pointBackgroundColor: '#667eea'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: { legend: { display: true, position: 'top' } },
+                    scales: { y: { beginAtZero: true, max: 100 } }
+                }
+            });
+
+            // График 2: Отказы
+            if (chartInstances['rejection']) chartInstances['rejection'].destroy();
+            chartInstances['rejection'] = new Chart(document.getElementById('chart-rejection'), {
+                type: 'bar',
+                data: {
+                    labels: runs,
+                    datasets: [{
+                        label: '% отказов',
+                        data: rejection,
+                        backgroundColor: rejection.map(v => v > 5 ? '#ff5459' : v > 2 ? '#ffc107' : '#2dbb8f'),
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: { legend: { display: true } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+
+            // График 3: Время ожидания
+            if (chartInstances['wait']) chartInstances['wait'].destroy();
+            chartInstances['wait'] = new Chart(document.getElementById('chart-wait'), {
+                type: 'line',
+                data: {
+                    labels: runs,
+                    datasets: [{
+                        label: 'Ожидание (сек)',
+                        data: waitTime,
+                        borderColor: '#764ba2',
+                        backgroundColor: 'rgba(118, 75, 162, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 5,
+                        pointBackgroundColor: '#764ba2'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: { legend: { display: true } }
+                }
+            });
+
+            // График 4: Scatter (Загруженность vs Отказы)
+            if (chartInstances['scatter']) chartInstances['scatter'].destroy();
+            chartInstances['scatter'] = new Chart(document.getElementById('chart-scatter'), {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Прогоны',
+                        data: utilization.map((u, i) => ({ x: u, y: rejection[i] })),
+                        backgroundColor: 'rgba(102, 126, 234, 0.6)',
+                        borderColor: '#667eea',
+                        borderWidth: 2,
+                        pointRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: { legend: { display: true } },
+                    scales: {
+                        x: { title: { display: true, text: 'Загруженность (%)' } },
+                        y: { title: { display: true, text: '% отказов' } }
+                    }
+                }
+            });
+
+            // График 5: Матчи
+            if (chartInstances['matches']) chartInstances['matches'].destroy();
+            chartInstances['matches'] = new Chart(document.getElementById('chart-matches'), {
+                type: 'bar',
+                data: {
+                    labels: runs,
+                    datasets: [{
+                        label: 'Матчей',
+                        data: matches,
+                        backgroundColor: '#2dbb8f',
+                        borderRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: { legend: { display: true } }
+                }
+            });
+
+            // График 6: Прибыло vs Обслужено
+            if (chartInstances['arrived']) chartInstances['arrived'].destroy();
+            chartInstances['arrived'] = new Chart(document.getElementById('chart-arrived'), {
+                type: 'bar',
+                data: {
+                    labels: runs,
+                    datasets: [
+                        {
+                            label: 'Прибыло',
+                            data: arrived,
+                            backgroundColor: '#667eea'
+                        },
+                        {
+                            label: 'Обслужено',
+                            data: served,
+                            backgroundColor: '#2dbb8f'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: { legend: { display: true } }
+                }
+            });
+        }
+
+        async function downloadResults() {
+            if (!currentResults) return;
+            try {
+                const response = await fetch('/api/download_csv', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(currentResults)
+                });
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `matchmaking_results.csv`;
+                a.click();
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                alert('Ошибка скачивания');
+            }
+        }
+
+        // Инициализация
+        updateCalculations();
+    </script>
+</body>
+</html>
