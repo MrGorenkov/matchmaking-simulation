@@ -566,7 +566,7 @@
         </div>
 
         <div class="footer">
-            <p>© 2024 МГТУ им. Баумана | Курсовая работа по имитационному моделированию</p>
+            <p>© 2025 МГТУ им. Баумана | Курсовая работа по имитационному моделированию</p>
         </div>
     </div>
 
@@ -782,187 +782,314 @@
         }
 
         function createCharts(experiments, aggregates) {
-            const chartsHtml = `
-                <div class="chart-wrapper">
-                    <h3>📈 Загруженность серверов</h3>
-                    <canvas id="chart-utilization"></canvas>
-                </div>
-                <div class="chart-wrapper">
-                    <h3>📊 Вероятность отказов</h3>
-                    <canvas id="chart-rejection"></canvas>
-                </div>
-                <div class="chart-wrapper">
-                    <h3>⏱️ Среднее время ожидания</h3>
-                    <canvas id="chart-wait"></canvas>
-                </div>
-                <div class="chart-wrapper">
-                    <h3>🎯 Загруженность vs Отказы</h3>
-                    <canvas id="chart-scatter"></canvas>
-                </div>
-                <div class="chart-wrapper">
-                    <h3>🎮 Сформировано матчей</h3>
-                    <canvas id="chart-matches"></canvas>
-                </div>
-                <div class="chart-wrapper">
-                    <h3>👥 Прибыло vs Обслужено</h3>
-                    <canvas id="chart-arrived"></canvas>
-                </div>
-            `;
+    const chartsHtml = `
+        <!-- График 1: Загруженность -->
+        <div class="chart-wrapper">
+            <h3>🖥️ Загруженность серверов</h3>
+            <canvas id="chart-utilization"></canvas>
+        </div>
+        
+        <!-- График 2: Вероятность отказов -->
+        <div class="chart-wrapper">
+            <h3>📊 Вероятность отказов</h3>
+            <canvas id="chart-rejection"></canvas>
+        </div>
+        
+        <!-- График 3: Среднее время ожидания -->
+        <div class="chart-wrapper">
+            <h3>⏱️ Среднее время ожидания</h3>
+            <canvas id="chart-wait"></canvas>
+        </div>
+        
+        <!-- График 4: Корреляция Загрузка vs Отказы -->
+        <div class="chart-wrapper">
+            <h3>🔄 Корреляция: Загрузка vs Отказы</h3>
+            <canvas id="chart-scatter"></canvas>
+        </div>
+        
+        <!-- График 5: Динамика отказов -->
+        <div class="chart-wrapper">
+            <h3>📈 Динамика вероятности отказа</h3>
+            <canvas id="chart-rejection-dynamic"></canvas>
+        </div>
+        
+        <!-- График 6: Динамика ожидания -->
+        <div class="chart-wrapper">
+            <h3>⏳ Динамика времени ожидания</h3>
+            <canvas id="chart-wait-dynamic"></canvas>
+        </div>
+        
+        <!-- График 7: Сформировано матчей -->
+        <div class="chart-wrapper">
+            <h3>🎮 Сформировано матчей</h3>
+            <canvas id="chart-matches"></canvas>
+        </div>
+        
+        <!-- График 8: Прибыло vs Обслужено -->
+        <div class="chart-wrapper">
+            <h3>👥 Прибыло vs Обслужено</h3>
+            <canvas id="chart-arrived"></canvas>
+        </div>
+        
+        <!-- График 9: Сравнение показателей -->
+        <div class="chart-wrapper" style="grid-column: 1 / -1;">
+            <h3>🎯 Сравнение ключевых показателей</h3>
+            <canvas id="chart-comparison"></canvas>
+        </div>
+    `;
 
-            document.getElementById('charts-grid').innerHTML = chartsHtml;
+    document.getElementById('charts-grid').innerHTML = chartsHtml;
 
-            // Данные для графиков
-            const runs = experiments.map(e => e.run);
-            const utilization = experiments.map(e => e.avg_server_util);
-            const rejection = experiments.map(e => e.rejection_rate);
-            const waitTime = experiments.map(e => e.avg_wait_time);
-            const matches = experiments.map(e => e.matches_formed);
-            const arrived = experiments.map(e => e.arrived);
-            const served = experiments.map(e => e.matched);
+    // Данные для графиков
+    const runs = experiments.map(e => e.run);
+    const utilization = experiments.map(e => e.avg_server_util);
+    const rejection = experiments.map(e => e.rejection_rate);
+    const waitTime = experiments.map(e => e.avg_wait_time);
+    const matches = experiments.map(e => e.matches_formed);
+    const arrived = experiments.map(e => e.arrived);
+    const served = experiments.map(e => e.matched);
 
-            // График 1: Загруженность
-            if (chartInstances['utilization']) chartInstances['utilization'].destroy();
-            chartInstances['utilization'] = new Chart(document.getElementById('chart-utilization'), {
-                type: 'line',
-                data: {
-                    labels: runs,
-                    datasets: [{
-                        label: 'Загруженность (%)',
-                        data: utilization,
-                        borderColor: '#667eea',
-                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                        borderWidth: 3,
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 5,
-                        pointBackgroundColor: '#667eea'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: { legend: { display: true, position: 'top' } },
-                    scales: { y: { beginAtZero: true, max: 100 } }
-                }
-            });
-
-            // График 2: Отказы
-            if (chartInstances['rejection']) chartInstances['rejection'].destroy();
-            chartInstances['rejection'] = new Chart(document.getElementById('chart-rejection'), {
-                type: 'bar',
-                data: {
-                    labels: runs,
-                    datasets: [{
-                        label: '% отказов',
-                        data: rejection,
-                        backgroundColor: rejection.map(v => v > 5 ? '#ff5459' : v > 2 ? '#ffc107' : '#2dbb8f'),
-                        borderRadius: 5
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: { legend: { display: true } },
-                    scales: { y: { beginAtZero: true } }
-                }
-            });
-
-            // График 3: Время ожидания
-            if (chartInstances['wait']) chartInstances['wait'].destroy();
-            chartInstances['wait'] = new Chart(document.getElementById('chart-wait'), {
-                type: 'line',
-                data: {
-                    labels: runs,
-                    datasets: [{
-                        label: 'Ожидание (сек)',
-                        data: waitTime,
-                        borderColor: '#764ba2',
-                        backgroundColor: 'rgba(118, 75, 162, 0.1)',
-                        borderWidth: 3,
-                        fill: true,
-                        tension: 0.4,
-                        pointRadius: 5,
-                        pointBackgroundColor: '#764ba2'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: { legend: { display: true } }
-                }
-            });
-
-            // График 4: Scatter (Загруженность vs Отказы)
-            if (chartInstances['scatter']) chartInstances['scatter'].destroy();
-            chartInstances['scatter'] = new Chart(document.getElementById('chart-scatter'), {
-                type: 'scatter',
-                data: {
-                    datasets: [{
-                        label: 'Прогоны',
-                        data: utilization.map((u, i) => ({ x: u, y: rejection[i] })),
-                        backgroundColor: 'rgba(102, 126, 234, 0.6)',
-                        borderColor: '#667eea',
-                        borderWidth: 2,
-                        pointRadius: 8
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: { legend: { display: true } },
-                    scales: {
-                        x: { title: { display: true, text: 'Загруженность (%)' } },
-                        y: { title: { display: true, text: '% отказов' } }
-                    }
-                }
-            });
-
-            // График 5: Матчи
-            if (chartInstances['matches']) chartInstances['matches'].destroy();
-            chartInstances['matches'] = new Chart(document.getElementById('chart-matches'), {
-                type: 'bar',
-                data: {
-                    labels: runs,
-                    datasets: [{
-                        label: 'Матчей',
-                        data: matches,
-                        backgroundColor: '#2dbb8f',
-                        borderRadius: 5
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: { legend: { display: true } }
-                }
-            });
-
-            // График 6: Прибыло vs Обслужено
-            if (chartInstances['arrived']) chartInstances['arrived'].destroy();
-            chartInstances['arrived'] = new Chart(document.getElementById('chart-arrived'), {
-                type: 'bar',
-                data: {
-                    labels: runs,
-                    datasets: [
-                        {
-                            label: 'Прибыло',
-                            data: arrived,
-                            backgroundColor: '#667eea'
-                        },
-                        {
-                            label: 'Обслужено',
-                            data: served,
-                            backgroundColor: '#2dbb8f'
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: { legend: { display: true } }
-                }
-            });
+    // ===== График 1: Загруженность =====
+    if (chartInstances['utilization']) chartInstances['utilization'].destroy();
+    chartInstances['utilization'] = new Chart(document.getElementById('chart-utilization'), {
+        type: 'line',
+        data: {
+            labels: runs,
+            datasets: [{
+                label: 'Загруженность (%)',
+                data: utilization,
+                borderColor: '#667eea',
+                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 5,
+                pointBackgroundColor: '#667eea'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: { legend: { display: true, position: 'top' } },
+            scales: { y: { beginAtZero: true, max: 100 } }
         }
+    });
+
+    // ===== График 2: Отказы (столбчатая) =====
+    if (chartInstances['rejection']) chartInstances['rejection'].destroy();
+    chartInstances['rejection'] = new Chart(document.getElementById('chart-rejection'), {
+        type: 'bar',
+        data: {
+            labels: runs,
+            datasets: [{
+                label: '% отказов',
+                data: rejection,
+                backgroundColor: rejection.map(v => v > 5 ? '#ff5459' : v > 2 ? '#ffc107' : '#2dbb8f'),
+                borderRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: { legend: { display: true } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+
+    // ===== График 3: Время ожидания =====
+    if (chartInstances['wait']) chartInstances['wait'].destroy();
+    chartInstances['wait'] = new Chart(document.getElementById('chart-wait'), {
+        type: 'line',
+        data: {
+            labels: runs,
+            datasets: [{
+                label: 'Ожидание (сек)',
+                data: waitTime,
+                borderColor: '#764ba2',
+                backgroundColor: 'rgba(118, 75, 162, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 5,
+                pointBackgroundColor: '#764ba2'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: { legend: { display: true } }
+        }
+    });
+
+    // ===== График 4: Scatter (Загруженность vs Отказы) =====
+    if (chartInstances['scatter']) chartInstances['scatter'].destroy();
+    chartInstances['scatter'] = new Chart(document.getElementById('chart-scatter'), {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: 'Прогоны',
+                data: utilization.map((u, i) => ({ x: u, y: rejection[i] })),
+                backgroundColor: 'rgba(102, 126, 234, 0.6)',
+                borderColor: '#667eea',
+                borderWidth: 2,
+                pointRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: { legend: { display: true } },
+            scales: {
+                x: { title: { display: true, text: 'Загруженность (%)' } },
+                y: { title: { display: true, text: '% отказов' } }
+            }
+        }
+    });
+
+    // ===== График 5: Динамика отказов (с средним) =====
+    const rejectionMean = aggregates.rejection_rate_avg;
+    if (chartInstances['rejection-dynamic']) chartInstances['rejection-dynamic'].destroy();
+    chartInstances['rejection-dynamic'] = new Chart(document.getElementById('chart-rejection-dynamic'), {
+        type: 'line',
+        data: {
+            labels: runs,
+            datasets: [
+                {
+                    label: 'Вероятность отказа (%)',
+                    data: rejection,
+                    borderColor: 'rgba(255, 107, 107, 1)',
+                    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4
+                },
+                {
+                    label: 'Среднее',
+                    data: Array(runs.length).fill(rejectionMean),
+                    borderColor: 'rgba(255, 107, 107, 0.5)',
+                    borderDash: [5, 5],
+                    borderWidth: 2,
+                    fill: false,
+                    pointRadius: 0
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: { legend: { display: true } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+
+    // ===== График 6: Динамика времени ожидания (с средним) =====
+    const waitMean = aggregates.avg_wait_time;
+    if (chartInstances['wait-dynamic']) chartInstances['wait-dynamic'].destroy();
+    chartInstances['wait-dynamic'] = new Chart(document.getElementById('chart-wait-dynamic'), {
+        type: 'line',
+        data: {
+            labels: runs,
+            datasets: [
+                {
+                    label: 'Время ожидания (сек)',
+                    data: waitTime,
+                    borderColor: 'rgba(118, 75, 162, 1)',
+                    backgroundColor: 'rgba(118, 75, 162, 0.1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4
+                },
+                {
+                    label: 'Среднее',
+                    data: Array(runs.length).fill(waitMean),
+                    borderColor: 'rgba(118, 75, 162, 0.5)',
+                    borderDash: [5, 5],
+                    borderWidth: 2,
+                    fill: false,
+                    pointRadius: 0
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: { legend: { display: true } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+
+    // ===== График 7: Матчи =====
+    if (chartInstances['matches']) chartInstances['matches'].destroy();
+    chartInstances['matches'] = new Chart(document.getElementById('chart-matches'), {
+        type: 'bar',
+        data: {
+            labels: runs,
+            datasets: [{
+                label: 'Матчей сформировано',
+                data: matches,
+                backgroundColor: '#2dbb8f',
+                borderRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: { legend: { display: true } }
+        }
+    });
+
+    // ===== График 8: Прибыло vs Обслужено =====
+    if (chartInstances['arrived']) chartInstances['arrived'].destroy();
+    chartInstances['arrived'] = new Chart(document.getElementById('chart-arrived'), {
+        type: 'bar',
+        data: {
+            labels: runs,
+            datasets: [
+                {
+                    label: 'Прибыло',
+                    data: arrived,
+                    backgroundColor: '#667eea'
+                },
+                {
+                    label: 'Обслужено',
+                    data: served,
+                    backgroundColor: '#2dbb8f'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: { legend: { display: true } }
+        }
+    });
+
+    // ===== График 9: Сравнение показателей =====
+    if (chartInstances['comparison']) chartInstances['comparison'].destroy();
+    chartInstances['comparison'] = new Chart(document.getElementById('chart-comparison'), {
+        type: 'bar',
+        data: {
+            labels: ['Загруженность (%)', 'Вероятность отказа (%)', 'Время ожидания (сек)'],
+            datasets: [{
+                label: 'Среднее значение',
+                data: [
+                    aggregates.avg_server_util,
+                    aggregates.rejection_rate_avg,
+                    aggregates.avg_wait_time
+                ],
+                backgroundColor: ['#667eea', '#ff6b6b', '#764ba2']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: { legend: { display: true } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+}
 
         async function downloadResults() {
             if (!currentResults) return;
